@@ -7,12 +7,12 @@ use frame_support::{assert_noop, assert_ok, BoundedVec};
 fn create_claim_success() {
     new_test_ext().execute_with(|| {
         let claim = vec![0, 1];
-        let claimVec = BoundedVec::try_from(claim.clone()).unwrap();
+        let claim_vec = BoundedVec::try_from(claim.clone()).unwrap();
         // 创建
         assert_ok!(PoeModule::create_claim(RuntimeOrigin::signed(1),claim.clone()));
         // 验证创建结果
         assert_eq!(
-            Claims::<Test>::get(&claimVec),
+            Claims::<Test>::get(&claim_vec),
             Some((1, frame_system::Pallet::<Test>::block_number()))
         );
     })
@@ -88,10 +88,10 @@ fn transfer_claim_success() {
             claim.clone(),
             receiver,
         ));
-        let claimVec = BoundedVec::try_from(claim.clone()).unwrap();
+        let claim_vec = BoundedVec::try_from(claim.clone()).unwrap();
         // 验证转移结果
         assert_eq!(
-            Claims::<Test>::get(&claimVec),
+            Claims::<Test>::get(&claim_vec),
             Some((receiver, frame_system::Pallet::<Test>::block_number()))
         );
     });
