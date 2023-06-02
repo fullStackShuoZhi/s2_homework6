@@ -19,6 +19,8 @@ use sp_runtime::{
 	ApplyExtrinsicResult, MultiSignature,
 };
 use sp_std::prelude::*;
+use pallet_insecure_randomness_collective_flip;
+
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -273,7 +275,10 @@ impl pallet_poe::Config for Runtime {
 }
 impl pallet_kitties::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	type Randomness = RandomnessCollectiveFlip;
 }
+impl pallet_insecure_randomness_collective_flip::Config for Runtime {}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub struct Runtime
@@ -282,6 +287,7 @@ construct_runtime!(
 		NodeBlock = opaque::Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
+		RandomnessCollectiveFlip: pallet_insecure_randomness_collective_flip,
 		System: frame_system,
 		Timestamp: pallet_timestamp,
 		Aura: pallet_aura,
@@ -293,7 +299,8 @@ construct_runtime!(
 		// 新增的模块，需要在此引入
 		TemplateModule: pallet_template,
 		PoeModule: pallet_poe,
-		KittiesModule: pallet_kitties
+		KittiesModule: pallet_kitties,
+
 	}
 );
 
