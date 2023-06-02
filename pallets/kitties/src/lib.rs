@@ -35,6 +35,7 @@ pub mod pallet {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
+
     }
 
     /// 存储KittyId
@@ -95,5 +96,16 @@ pub mod pallet {
         }
     }
 
-
+    impl<T: Config> Pallet<T> {
+        /// 返回一个kittyId，并+1后保存为下一个kittyId
+        fn get_next_id() -> Result<KittyId, DispatchError> {
+            NextKittyId::<T>::try_mutate(|next_id| -> Result<KittyId, DispatchError> {
+                // 读取当前的 此时完成了copy
+                let current_id = *next_id;
+                // 更新下一个id，可能超出u32的范围，溢出则抛出Error
+                *next_id = next_id.checked_add(1).ok_or::<DispatchError>(Error::<T>::InvalidKittyId.into())?;
+                Ok(current_id)
+            })
+        }
+    }
 }
