@@ -271,6 +271,9 @@ impl pallet_poe::Config for Runtime {
 	type MaxClaimLength = ConstU32<128>;
 	type RuntimeEvent = RuntimeEvent;
 }
+impl pallet_kitties::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+}
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub struct Runtime
@@ -287,8 +290,10 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment,
 		Sudo: pallet_sudo,
 		// Include the custom logic from the pallet-template in the runtime.
+		// 新增的模块，需要在此引入
 		TemplateModule: pallet_template,
 		PoeModule: pallet_poe,
+		KittiesModule: pallet_kitties
 	}
 );
 
