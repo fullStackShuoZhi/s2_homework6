@@ -154,7 +154,7 @@ pub mod pallet {
 
             ensure!( Self::kitty_owner(kitty_id) == Some(who.clone()),Error::<T>::NotOwner);
 
-            ensure!(recipient == who,Error::<T>::CanNotTransferToSelf);
+            ensure!(recipient != who,Error::<T>::CanNotTransferToSelf);
 
             KittyOwner::<T>::insert(kitty_id, &recipient);
 

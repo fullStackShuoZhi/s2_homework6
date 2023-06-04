@@ -1,4 +1,6 @@
-use crate::{mock::*, Error, KittyId};
+// use frame_benchmarking::baseline::mock::System;
+use super::*;
+use crate::{mock::*, Error, KittyId, Event};
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::BoundedVec;
 
@@ -8,10 +10,13 @@ fn create_kitty() {
     new_test_ext().execute_with(|| {
         let kitty_id = 0;
         let account_id = 1;
+        // let events = System::events();
         // 验空
         assert_eq!(KittiesModule::next_kitty_id(), kitty_id);
         // 验证kitty创建正常
         assert_ok!(KittiesModule::create_kitty(RuntimeOrigin::signed(account_id)));
+        // let exceptKittyCreated = Event::KittyCreated { who: (RuntimeOrigin::signed(account_id)) ,kitty_id, kitty: Default::default() };
+
         // 验证kittyId存储符合预期
         assert_eq!(KittiesModule::next_kitty_id(), kitty_id + 1);
         // 验证kitty的内容存在
@@ -31,6 +36,7 @@ fn create_kitty() {
 }
 
 /// 繁衍 Kitty
+#[test]
 fn breed_kitty() {
     new_test_ext().execute_with(|| {
         let kitty_id = 0;
@@ -72,6 +78,7 @@ fn breed_kitty() {
 }
 
 /// 转移 Kitty
+#[test]
 fn transfer_kitty() {
     new_test_ext().execute_with(|| {
         let kitty_id = 0;
