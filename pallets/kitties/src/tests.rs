@@ -1,4 +1,3 @@
-// use frame_benchmarking::baseline::mock::System;
 use super::*;
 use crate::{mock::*, Error, KittyId, Event};
 use frame_support::{assert_noop, assert_ok};
@@ -15,7 +14,16 @@ fn create_kitty() {
         assert_eq!(KittiesModule::next_kitty_id(), kitty_id);
         // 验证kitty创建正常
         assert_ok!(KittiesModule::create_kitty(RuntimeOrigin::signed(account_id)));
+        // 创建事件验证
+        let kitty = KittiesModule::kitties(kitty_id).expect("Kitty Created");
+        System::assert_last_event(Event::KittyCreated {
+            who: account_id,
+            kitty_id,
+            kitty,
+        }.into());
+
         // let exceptKittyCreated = Event::KittyCreated { who: (RuntimeOrigin::signed(account_id)) ,kitty_id, kitty: Default::default() };
+        // System::assert_last_event(Event::KittyCreated { who: account_id, kitty_id, kitty: Default::default() }.into());
 
         // 验证kittyId存储符合预期
         assert_eq!(KittiesModule::next_kitty_id(), kitty_id + 1);
@@ -61,8 +69,17 @@ fn breed_kitty() {
             kitty_id,
             kitty_id+1
         ));
-
         let breed_kitty_id = 2;
+        // 繁衍事件验证
+        let breed_kitty = KittiesModule::kitties(breed_kitty_id).expect("Breed Kitty Created");
+        System::assert_last_event(
+            Event::KittyBred {
+                who: account_id,
+                kitty_id: breed_kitty_id,
+                kitty: breed_kitty,
+            }.into()
+        );
+
         // 验证繁衍kitty成功后，kittyId的存储符合预期
         assert_eq!(KittiesModule::next_kitty_id(), breed_kitty_id + 1);
         // 验证繁衍的kitty的内容存在
@@ -110,6 +127,15 @@ fn transfer_kitty() {
                 recipient,
                 kitty_id
         ));
+        // 转移事件验证
+        System::assert_last_event(
+            Event::KittyTransferred {
+                who: account_id,
+                recipient,
+                kitty_id,
+            }.into()
+        );
+
         // 验证转移后owner正确
         assert_eq!(KittiesModule::kitty_owner(kitty_id), Some(recipient));
         // 验证转移后，新owner能正常转移
@@ -120,6 +146,13 @@ fn transfer_kitty() {
         ));
         // 验证新owner转移后，owner正确
         assert_eq!(KittiesModule::kitty_owner(kitty_id), Some(account_id));
+        // 转移事件验证
+        System::assert_last_event(
+            Event::KittyTransferred {
+                who: recipient,
+                recipient: account_id,
+                kitty_id,
+            }.into()
+        );
     });
 }
-
