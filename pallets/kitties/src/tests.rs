@@ -1,7 +1,5 @@
-use super::*;
-use crate::{mock::*, Error, KittyId, Event};
+use crate::{mock::*, Error, Event};
 use frame_support::{assert_noop, assert_ok};
-use sp_runtime::BoundedVec;
 
 ///  创建Kitty
 #[test]

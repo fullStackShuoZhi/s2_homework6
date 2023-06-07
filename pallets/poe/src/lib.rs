@@ -9,13 +9,11 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use frame_support::pallet;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use frame_support::inherent::Vec;
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub (super) trait Store)]
     pub struct Pallet<T>(_);
 
     /// Configure the pallet by specifying the parameters and types on which it depends.
