@@ -273,9 +273,14 @@ impl pallet_poe::Config for Runtime {
 	type MaxClaimLength = ConstU32<128>;
 	type RuntimeEvent = RuntimeEvent;
 }
+parameter_types! {
+	pub KittyPrice: Balance = EXISTENTIAL_DEPOSIT * 10;
+}
 impl pallet_kitties::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Randomness = RandomnessCollectiveFlip;
+	type Currency = Balances;
+	type KittyPrice = KittyPrice;
 }
 impl pallet_insecure_randomness_collective_flip::Config for Runtime {}
 
@@ -287,7 +292,6 @@ construct_runtime!(
 		NodeBlock = opaque::Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		RandomnessCollectiveFlip: pallet_insecure_randomness_collective_flip,
 		System: frame_system,
 		Timestamp: pallet_timestamp,
 		Aura: pallet_aura,
@@ -297,6 +301,7 @@ construct_runtime!(
 		Sudo: pallet_sudo,
 		// Include the custom logic from the pallet-template in the runtime.
 		// 新增的模块，需要在此引入
+		RandomnessCollectiveFlip: pallet_insecure_randomness_collective_flip,
 		TemplateModule: pallet_template,
 		PoeModule: pallet_poe,
 		KittiesModule: pallet_kitties,

@@ -20,10 +20,12 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     use sp_io::hashing::blake2_128;
-    use frame_support::traits::Randomness;
+    use frame_support::traits::{Randomness, Currency, ReservableCurrency};
 
     /// ID
     pub type KittyId = u32;
+    pub type BalanceOf<T> =
+    <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
     /// 数据存储的类型和长度
     #[derive(Encode, Decode, Clone, Copy, RuntimeDebug, PartialEq, Eq, Default, TypeInfo, MaxEncodedLen)]
@@ -38,6 +40,9 @@ pub mod pallet {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
+        type Currency: ReservableCurrency<Self::AccountId>;
+        #[pallet::constant]
+        type KittyPrice: Get<BalanceOf<Self>>;
     }
 
     /// 存储KittyId
@@ -57,7 +62,10 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn kitty_parents)]
     pub type KittyParents<T: Config> = StorageMap<_, Blake2_128Concat, KittyId, (KittyId, KittyId), OptionQuery>;
-
+    /// 存储Kitty的Sale状态
+    #[pallet::storage]
+    #[pallet::getter(fn kitty_on_sale)]
+    pub type KittyOnSale<T: Config> = StorageMap<_, Blake2_128Concat, KittyId, (), OptionQuery>;
 
     // Pallets use events to inform users when important changes are made.
     // https://docs.substrate.io/main-docs/build/events-errors/
@@ -70,6 +78,10 @@ pub mod pallet {
         KittyBred { who: T::AccountId, kitty_id: KittyId, kitty: Kitty },
         /// Kitty 转移成功
         KittyTransferred { who: T::AccountId, recipient: T::AccountId, kitty_id: KittyId },
+        /// Kitty 销售上架
+        KittyOnSale { who: T::AccountId, kitty_id: KittyId },
+        /// Kitty被购买
+        KittyBought { who: T::AccountId, kitty_id: KittyId },
     }
 
     // Errors inform users that something went wrong.
@@ -83,6 +95,14 @@ pub mod pallet {
         NotOwner,
         /// 转移给自己
         CanNotTransferToSelf,
+        /// 已经处于在售状态
+        AlreadyOnSale,
+        /// 没有Owner
+        NoOwner,
+        /// 已经持有了
+        AlreadyOwned,
+        /// 未上架销售
+        NotOnSale,
     }
 
     // Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -98,6 +118,10 @@ pub mod pallet {
 
             let kitty_id = Self::get_next_id()?;
             let kitty = Kitty(Self::random_value(&who));
+
+            let price = T::KittyPrice::get();
+            T::Currency::reserve(&who, price)?;
+
             Kitties::<T>::insert(kitty_id, &kitty);
             KittyOwner::<T>::insert(kitty_id, &who);
 
@@ -120,19 +144,18 @@ pub mod pallet {
 
             let kitty_id = Self::get_next_id()?;
 
-            let kitty_1_result = Self::kitties(kitty_id_1).ok_or(Error::<T>::InvalidKittyId);
-            let kitty_1 = kitty_1_result?.0;
-            // let kitty_1 = Self::get_kitty(kitty_id_1).map_err(|_| Error::<T>::InvalidKittyId);
-            let kitty_2_result = Self::kitties(kitty_id_2).ok_or(Error::<T>::InvalidKittyId);
-            let kitty_2 = kitty_2_result?.0;
-            // let kitty_2 = Self::get_kitty(kitty_id_2).map_err(|_| Error::<T>::InvalidKittyId);
+            let kitty_1 = Kitties::<T>::get(kitty_id_1).expect("Checked it Exists");
+            let kitty_2 = Kitties::<T>::get(kitty_id_2).expect("Checked it Exists");
 
             let selector = Self::random_value(&who);
             let mut data = [0u8; 16];
-            for i in 0..kitty_1.len() {
-                data[i] = (kitty_1[i] & selector[i]) | (kitty_2[i] & !selector[i])
+            for i in 0..kitty_1.0.len() {
+                data[i] = (kitty_1.0[i] & selector[i]) | (kitty_2.0[i] & !selector[i])
             }
             let kitty = Kitty(data);
+
+            let price = T::KittyPrice::get();
+            T::Currency::reserve(&who, price)?;
 
             Kitties::<T>::insert(kitty_id, &kitty);
             KittyOwner::<T>::insert(kitty_id, &who);
@@ -162,6 +185,51 @@ pub mod pallet {
 
             Ok(())
         }
+
+        /// 标记可售
+        #[pallet::call_index(3)]
+        #[pallet::weight(10_003 + T::DbWeight::get().writes(1).ref_time())]
+        pub fn sale(origin: OriginFor<T>, kitty_id: KittyId) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            // kitty存在
+            ensure!(Kitties::<T>::contains_key(kitty_id),Error::<T>::InvalidKittyId);
+            // 所有权正确
+            ensure!( Self::kitty_owner(kitty_id) == Some(who.clone()),Error::<T>::NotOwner);
+            // 已经在售状态
+            ensure!(!KittyOnSale::<T>::contains_key(kitty_id), Error::<T>::AlreadyOnSale);
+            // 标记在售
+            KittyOnSale::<T>::insert(kitty_id, ());
+
+            Self::deposit_event(Event::KittyOnSale { who, kitty_id });
+
+            Ok(())
+        }
+
+        #[pallet::call_index(4)]
+        #[pallet::weight(10_004 + T::DbWeight::get().writes(1).ref_time())]
+        pub fn buy(origin: OriginFor<T>, kitty_id: KittyId) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+
+            ensure!(Kitties::<T>::contains_key(kitty_id), Error::<T>::InvalidKittyId);
+            let owner = Self::kitty_owner(kitty_id).ok_or(Error::<T>::NoOwner)?;
+
+            ensure!(owner != who, Error::<T>::AlreadyOwned);
+            ensure!(KittyOnSale::<T>::contains_key(kitty_id), Error::<T>::NotOnSale);
+
+            let price = T::KittyPrice::get();
+            // 质押
+            T::Currency::reserve(&who, price)?;
+            // 解除质押
+            T::Currency::unreserve(&owner, price);
+
+
+            KittyOwner::<T>::insert(kitty_id, &who);
+            KittyOnSale::<T>::remove(kitty_id);
+
+            Self::deposit_event(Event::KittyBought { who, kitty_id });
+
+            Ok(())
+        }
     }
 
     impl<T: Config> Pallet<T> {
@@ -186,6 +254,5 @@ pub mod pallet {
             // 用blake2_128确保长度match
             payload.using_encoded(blake2_128)
         }
-
     }
 }
