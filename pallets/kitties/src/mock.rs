@@ -14,6 +14,8 @@ use pallet_balances::AccountData;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
+use sp_runtime::traits::AccountIdConversion;
+
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
 	pub enum Test where
@@ -93,4 +95,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
     let mut ext: sp_io::TestExternalities = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap().into();
     ext.execute_with(|| System::set_block_number(1));
     ext
+}
+
+pub fn get_account_id() -> <Test as frame_system::Config>::AccountId {
+    KittyPalletId::get().into_account_truncating()
 }

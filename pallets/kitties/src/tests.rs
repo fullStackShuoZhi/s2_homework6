@@ -1,7 +1,10 @@
 use crate::{mock::*, Error, Event};
 use frame_support::{assert_noop, assert_ok};
 
+
 const ACCOUNT_BALANCE: u128 = 100000;
+
+
 
 ///  创建Kitty
 #[test]
@@ -23,9 +26,9 @@ fn create_kitty() {
             kitty_id,
             kitty,
         }.into());
-
-        // let exceptKittyCreated = Event::KittyCreated { who: (RuntimeOrigin::signed(account_id)) ,kitty_id, kitty: Default::default() };
-        // System::assert_last_event(Event::KittyCreated { who: account_id, kitty_id, kitty: Default::default() }.into());
+        // 验证余额扣减正确
+        assert_eq!(Balances::free_balance(account_id), ACCOUNT_BALANCE - KittyPrice::get());
+        assert_eq!(Balances::free_balance(&get_account_id()), KittyPrice::get());
 
         // 验证kittyId存储符合预期
         assert_eq!(KittiesModule::next_kitty_id(), kitty_id + 1);
