@@ -181,3 +181,87 @@ fn transfer_kitty() {
         );
     });
 }
+
+/// 标记 Kitty 可售
+#[test]
+fn sale_kitty() {
+    new_test_ext().execute_with(|| {
+        let kitty_id = 0;
+        let account_id = 1;
+        // 预设余额
+        assert_ok!(Balances::set_balance(RuntimeOrigin::root(), account_id, ACCOUNT_BALANCE, 0));
+
+        // 验空
+        assert_noop!(
+			KittiesModule::sale(RuntimeOrigin::signed(account_id), kitty_id),
+			Error::<Test>::InvalidKittyId
+		);
+        // 验证kitty创建正常
+        assert_ok!(KittiesModule::create_kitty(RuntimeOrigin::signed(account_id)));
+        // 验证余额扣减正确
+        assert_eq!(Balances::free_balance(account_id), ACCOUNT_BALANCE - KittyPrice::get());
+        assert_eq!(Balances::free_balance(&get_account_id()), KittyPrice::get());
+        // 所有权不正确
+        assert_noop!(
+			KittiesModule::sale(RuntimeOrigin::signed(account_id + 1), kitty_id),
+			Error::<Test>::NotOwner
+		);
+        // 标记成功
+        assert_ok!(KittiesModule::sale(RuntimeOrigin::signed(account_id), kitty_id));
+        assert!(KittiesModule::kitty_on_sale(kitty_id).is_some());
+        System::assert_last_event(Event::KittyOnSale { who: account_id, kitty_id }.into());
+
+        // 已经在售
+        assert_noop!(
+			KittiesModule::sale(RuntimeOrigin::signed(account_id), kitty_id),
+			Error::<Test>::AlreadyOnSale
+		);
+    })
+}
+
+/// 购买 Kitty
+#[test]
+fn buy_kitty() {
+    new_test_ext().execute_with(|| {
+        let kitty_id = 0;
+        let account_id = 1;
+        let account_id_2 = 2;
+        // 预设余额
+        assert_ok!(Balances::set_balance(RuntimeOrigin::root(), account_id, ACCOUNT_BALANCE, 0));
+        assert_ok!(Balances::set_balance(RuntimeOrigin::root(), account_id_2, ACCOUNT_BALANCE, 0));
+
+        // 验空
+        assert_noop!(
+			KittiesModule::buy(RuntimeOrigin::signed(account_id), kitty_id),
+			Error::<Test>::InvalidKittyId
+		);
+        // 验证kitty创建正常
+        assert_ok!(KittiesModule::create_kitty(RuntimeOrigin::signed(account_id)));
+        // 验证余额扣减正确
+        assert_eq!(Balances::free_balance(account_id), ACCOUNT_BALANCE - KittyPrice::get());
+        assert_eq!(Balances::free_balance(&get_account_id()), KittyPrice::get());
+        // 已经持有
+        assert_noop!(
+			KittiesModule::buy(RuntimeOrigin::signed(account_id), kitty_id),
+			Error::<Test>::AlreadyOwned
+		);
+        // 非可售状态
+        assert_noop!(
+			KittiesModule::buy(RuntimeOrigin::signed(account_id_2), kitty_id),
+			Error::<Test>::NotOnSale
+		);
+        // 标记在售成功
+        assert_ok!(KittiesModule::sale(RuntimeOrigin::signed(account_id), kitty_id));
+        assert!(KittiesModule::kitty_on_sale(kitty_id).is_some());
+        System::assert_last_event(Event::KittyOnSale { who: account_id, kitty_id }.into());
+        // 购买成功
+        assert_ok!(KittiesModule::buy(RuntimeOrigin::signed(account_id_2), kitty_id));
+        // 验证相关结果
+        assert!(KittiesModule::kitty_on_sale(kitty_id).is_none());
+        assert_eq!(KittiesModule::kitty_owner(kitty_id), Some(account_id_2));
+        assert_eq!(Balances::free_balance(account_id), ACCOUNT_BALANCE);
+        assert_eq!(Balances::free_balance(account_id_2), ACCOUNT_BALANCE - KittyPrice::get());
+
+        System::assert_last_event(Event::KittyBought { who: account_id_2, kitty_id }.into());
+    })
+}
