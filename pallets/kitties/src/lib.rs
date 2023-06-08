@@ -20,7 +20,10 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     use sp_io::hashing::blake2_128;
-    use frame_support::traits::{Randomness, Currency, ReservableCurrency};
+    use frame_support::traits::{Randomness, Currency, ExistenceRequirement};
+    use frame_support::PalletId;
+    use sp_runtime::traits::AccountIdConversion;
+
 
     /// ID
     pub type KittyId = u32;
@@ -40,9 +43,10 @@ pub mod pallet {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
-        type Currency: ReservableCurrency<Self::AccountId>;
+        type Currency: Currency<Self::AccountId>;
         #[pallet::constant]
         type KittyPrice: Get<BalanceOf<Self>>;
+        type PalletId: Get<PalletId>;
     }
 
     /// 存储KittyId
@@ -120,7 +124,9 @@ pub mod pallet {
             let kitty = Kitty(Self::random_value(&who));
 
             let price = T::KittyPrice::get();
-            T::Currency::reserve(&who, price)?;
+            // T::Currency::reserve(&who, price)?;
+            T::Currency::transfer(&who, &Self::get_account_id(),
+                                  price, ExistenceRequirement::KeepAlive)?;
 
             Kitties::<T>::insert(kitty_id, &kitty);
             KittyOwner::<T>::insert(kitty_id, &who);
@@ -155,7 +161,9 @@ pub mod pallet {
             let kitty = Kitty(data);
 
             let price = T::KittyPrice::get();
-            T::Currency::reserve(&who, price)?;
+            // T::Currency::reserve(&who, price)?;
+            T::Currency::transfer(&who, &Self::get_account_id(),
+                                  price, ExistenceRequirement::KeepAlive)?;
 
             Kitties::<T>::insert(kitty_id, &kitty);
             KittyOwner::<T>::insert(kitty_id, &who);
@@ -218,10 +226,12 @@ pub mod pallet {
 
             let price = T::KittyPrice::get();
             // 质押
-            T::Currency::reserve(&who, price)?;
+            // T::Currency::reserve(&who, price)?;
             // 解除质押
-            T::Currency::unreserve(&owner, price);
-
+            // T::Currency::unreserve(&owner, price);
+            // 转移
+            T::Currency::transfer(&who, &owner,
+                                  price, ExistenceRequirement::KeepAlive)?;
 
             KittyOwner::<T>::insert(kitty_id, &who);
             KittyOnSale::<T>::remove(kitty_id);
@@ -253,6 +263,10 @@ pub mod pallet {
             );
             // 用blake2_128确保长度match
             payload.using_encoded(blake2_128)
+        }
+        ///
+        fn get_account_id() -> T::AccountId {
+            T::PalletId::get().into_account_truncating()
         }
     }
 }

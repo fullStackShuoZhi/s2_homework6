@@ -1,13 +1,17 @@
 use crate::{mock::*, Error, Event};
 use frame_support::{assert_noop, assert_ok};
 
+const ACCOUNT_BALANCE: u128 = 100000;
+
 ///  创建Kitty
 #[test]
 fn create_kitty() {
     new_test_ext().execute_with(|| {
         let kitty_id = 0;
         let account_id = 1;
-        // let events = System::events();
+        // 预设余额
+        assert_ok!(Balances::set_balance(RuntimeOrigin::root(), account_id, ACCOUNT_BALANCE, 0));
+
         // 验空
         assert_eq!(KittiesModule::next_kitty_id(), kitty_id);
         // 验证kitty创建正常
@@ -47,6 +51,9 @@ fn breed_kitty() {
     new_test_ext().execute_with(|| {
         let kitty_id = 0;
         let account_id = 1;
+        // 预设余额
+        assert_ok!(Balances::set_balance(RuntimeOrigin::root(), account_id, ACCOUNT_BALANCE, 0));
+
         // 验证俩父代相同
         assert_noop!(
             KittiesModule::breed(RuntimeOrigin::signed(account_id),kitty_id,kitty_id),
@@ -99,6 +106,10 @@ fn transfer_kitty() {
         let kitty_id = 0;
         let account_id = 1;
         let recipient = 2;
+        // 预设余额
+        assert_ok!(Balances::set_balance(RuntimeOrigin::root(), account_id, ACCOUNT_BALANCE, 0));
+        assert_ok!(Balances::set_balance(RuntimeOrigin::root(), recipient, ACCOUNT_BALANCE, 0));
+
         // 验证kitty创建正常
         assert_ok!(KittiesModule::create_kitty(RuntimeOrigin::signed(account_id)));
         // 验证创建的kitty所有者正确
