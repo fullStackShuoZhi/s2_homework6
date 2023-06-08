@@ -5,7 +5,6 @@ use frame_support::{assert_noop, assert_ok};
 const ACCOUNT_BALANCE: u128 = 100000;
 
 
-
 ///  创建Kitty
 #[test]
 fn create_kitty() {
@@ -62,14 +61,24 @@ fn breed_kitty() {
             KittiesModule::breed(RuntimeOrigin::signed(account_id),kitty_id,kitty_id),
             Error::<Test>::SameKittyId
         );
+        // 验证余额没有扣减
+        assert_eq!(Balances::free_balance(account_id), ACCOUNT_BALANCE);
+
         // 验证kitty不存在
         assert_noop!(
             KittiesModule::breed(RuntimeOrigin::signed(account_id),kitty_id,kitty_id+1),
             Error::<Test>::InvalidKittyId
         );
+        // 验证余额没有扣减
+        assert_eq!(Balances::free_balance(account_id), ACCOUNT_BALANCE);
+
         // 验证创建两个kitty成功
         assert_ok!(KittiesModule::create_kitty(RuntimeOrigin::signed(account_id)));
         assert_ok!(KittiesModule::create_kitty(RuntimeOrigin::signed(account_id)));
+        // 验证余额扣减正确
+        assert_eq!(Balances::free_balance(account_id), ACCOUNT_BALANCE - 2 * KittyPrice::get());
+        assert_eq!(Balances::free_balance(&get_account_id()), 2 * KittyPrice::get());
+
         // 验证kittyId存储符合预期
         assert_eq!(KittiesModule::next_kitty_id(), kitty_id + 2);
         // 验证kitty繁衍成功
@@ -77,6 +86,10 @@ fn breed_kitty() {
             kitty_id,
             kitty_id+1
         ));
+        // 验证余额扣减正确
+        assert_eq!(Balances::free_balance(account_id), ACCOUNT_BALANCE - 3 * KittyPrice::get());
+        assert_eq!(Balances::free_balance(&get_account_id()), 3 * KittyPrice::get());
+
         let breed_kitty_id = 2;
         // 繁衍事件验证
         let breed_kitty = KittiesModule::kitties(breed_kitty_id).expect("Breed Kitty Created");
