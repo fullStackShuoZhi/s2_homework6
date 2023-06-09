@@ -27,21 +27,10 @@ pub mod pallet {
     use frame_support::PalletId;
     use sp_runtime::traits::AccountIdConversion;
     use crate::migrations;
+    pub use crate::migrations::current_version::*;
 
-
-    /// ID
-    pub type KittyId = u32;
     pub type BalanceOf<T> =
     <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-
-    /// 数据存储的类型和长度
-    #[derive(Encode, Decode, Clone, Copy, RuntimeDebug, PartialEq, Eq, Default, TypeInfo, MaxEncodedLen)]
-    pub struct Kitty {
-        pub dna: [u8; 16],
-        pub name: [u8; 4],
-    }
-
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
 
     #[pallet::pallet]
@@ -123,8 +112,9 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_runtime_upgrade() -> Weight {
-            migrations::v1::migrate::<T>()
+            // migrations::v1::migrate::<T>()
             // migrations::v2::migrate::<T>()
+            migrations::migrate::<T>()
         }
     }
 
@@ -136,7 +126,7 @@ pub mod pallet {
         /// 创建Kitty
         #[pallet::call_index(0)]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-        pub fn create_kitty(origin: OriginFor<T>, name: [u8; 4]) -> DispatchResult {
+        pub fn create_kitty(origin: OriginFor<T>, name: [u8; 8]) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
             let kitty_id = Self::get_next_id()?;
@@ -161,7 +151,7 @@ pub mod pallet {
         /// 两个kitty，生成一个子kitty
         #[pallet::call_index(1)]
         #[pallet::weight(10_001 + T::DbWeight::get().writes(1).ref_time())]
-        pub fn breed(origin: OriginFor<T>, kitty_id_1: KittyId, kitty_id_2: KittyId, name: [u8; 4]) -> DispatchResult {
+        pub fn breed(origin: OriginFor<T>, kitty_id_1: KittyId, kitty_id_2: KittyId, name: [u8; 8]) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
             ensure!(kitty_id_1 != kitty_id_2,Error::<T>::SameKittyId);
