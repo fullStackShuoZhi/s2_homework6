@@ -5,11 +5,20 @@
 /// <https://docs.substrate.io/reference/frame-pallets/>
 pub use pallet::*;
 
+
+use serde::{Deserialize, Deserializer};
+
 #[frame_support::pallet]
 pub mod pallet {
     use frame_support::log;
+    use frame_support::inherent::Vec;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+    use sp_runtime::{
+        offchain::{
+            http, Duration,
+        },
+    };
 
     #[pallet::pallet]
     pub struct Pallet<T>(_);
@@ -21,6 +30,49 @@ pub mod pallet {
 
     #[derive(Debug, Encode, Decode, Default)]
     struct OffChainData(OffChainDataType);
+
+    #[derive(Deserialize, Encode, Decode)]
+    struct WeatherInfoNow {
+        #[serde(deserialize_with = "de_string_to_bytes")]
+        temp: Vec<u8>,
+        #[serde(deserialize_with = "de_string_to_bytes")]
+        humidity: Vec<u8>,
+        #[serde(deserialize_with = "de_string_to_bytes")]
+        text: Vec<u8>,
+    }
+
+    #[derive(Deserialize, Encode, Decode)]
+    struct WeatherInfo {
+        #[serde(deserialize_with = "de_string_to_bytes", rename(deserialize = "updateTime"))]
+        update_time: Vec<u8>,
+        // #[serde(deserialize_with = "de_vec_to_bounded_vec")]
+        // now: BoundedVec<WeatherInfoNow, ConstU32<100>>,
+        now: WeatherInfoNow,
+    }
+
+    fn de_string_to_bytes<'de, D>(de: D) -> Result<Vec<u8>, D::Error>
+        where
+            D: Deserializer<'de>,
+    {
+        let s: &str = Deserialize::deserialize(de)?;
+        Ok(s.as_bytes().to_vec())
+    }
+
+    use core::{convert::TryInto, fmt};
+    use serde::{Deserialize, Deserializer};
+
+    impl fmt::Debug for WeatherInfo {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(
+                f,
+                "{{ updateTime: {}, now.text: {}, now.humidity: {} ,now.temp: {} }}",
+                sp_std::str::from_utf8(&self.update_time).map_err(|_| fmt::Error)?,
+                sp_std::str::from_utf8(&self.now.text).map_err(|_| fmt::Error)?,
+                sp_std::str::from_utf8(&self.now.humidity).map_err(|_| fmt::Error)?,
+                sp_std::str::from_utf8(&self.now.temp).map_err(|_| fmt::Error)?,
+            )
+        }
+    }
 
     /// Configure the pallet by specifying the parameters and types on which it depends.
     #[pallet::config]
@@ -78,6 +130,43 @@ pub mod pallet {
                     }) {
                 log::info!("OffChainWorker ==> 读取成功:{:?}",data_stored.0)
             }
+
+
+            if let Ok(info) = Self::fetch_weather_info() {
+                log::info!("OCW ==> Weather Info: {:?}", info);
+            } else {
+                log::info!("OCW ==> Error while fetch github info!");
+            }
+        }
+    }
+
+    impl<T: Config> Pallet<T> {
+        fn fetch_weather_info() -> Result<WeatherInfo, http::Error> {
+            // prepare for send request
+            let deadline = sp_io::offchain::timestamp().add(Duration::from_millis(8_000));
+            let request =
+                http::Request::get("https://helmet.wayxtech.com/api/common/taiShunWeather");
+            let pending = request
+                .deadline(deadline).send().map_err(|_| http::Error::IoError)?;
+            let response = pending.try_wait(deadline).map_err(|_| http::Error::DeadlineReached)??;
+            if response.code != 200 {
+                log::warn!("Unexpected status code: {}", response.code);
+                return Err(http::Error::Unknown);
+            }
+            let body = response.body().collect::<Vec<u8>>();
+            let body_str = sp_std::str::from_utf8(&body).map_err(|_| {
+                log::warn!("No UTF8 body");
+                http::Error::Unknown
+            })?;
+
+            // parse the response str
+            let gh_info: WeatherInfo =
+                serde_json::from_str(body_str).map_err(|e| {
+                    log::error!("Deserialize Fail,{:?}",e);
+                    http::Error::Unknown
+                })?;
+
+            Ok(gh_info)
         }
     }
 }
