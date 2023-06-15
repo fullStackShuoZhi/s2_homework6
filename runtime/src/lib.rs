@@ -286,10 +286,14 @@ impl pallet_kitties::Config for Runtime {
     type Randomness = RandomnessCollectiveFlip;
     type Currency = Balances;
     type KittyPrice = KittyPrice;
-	type PalletId = KittyPalletId;
+    type PalletId = KittyPalletId;
 }
 
 impl pallet_insecure_randomness_collective_flip::Config for Runtime {}
+
+impl pallet_ocw::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+}
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
@@ -312,7 +316,7 @@ construct_runtime!(
 		TemplateModule: pallet_template,
 		PoeModule: pallet_poe,
 		KittiesModule: pallet_kitties,
-
+		OcwModule: pallet_ocw,
 	}
 );
 
