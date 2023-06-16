@@ -246,12 +246,7 @@ pub mod pallet {
                 log::info!("OCW ==> Weather Info Text Byte: {:?}", info.now.text);
                 // Retrieve the signer to sign the payload
                 let signer = Signer::<T, T::AuthorityId>::any_account();
-
-                // `send_unsigned_transaction` is returning a type of `Option<(Account<T>, Result<(), ()>)>`.
-                //	 The returned result means:
-                //	 - `None`: no account is available for sending transaction
-                //	 - `Some((account, Ok(())))`: transaction is successfully sent
-                //	 - `Some((account, Err(())))`: error occurred when sending the transaction
+                // 发起不签名带签名负载的交易
                 if let Some((_, res)) = signer.send_unsigned_transaction(
                     // this line is to prepare and return payload
                     |acct| Payload { weather_text: info.now.text.clone(), public: acct.public.clone() },
@@ -266,10 +261,9 @@ pub mod pallet {
                     log::error!("OCW ==> No local account available");
                 }
             } else {
-                log::info!("OCW ==> Error while fetch github info!");
+                log::info!("OCW ==> Error while fetch Weather info!");
             }
 
-            // 发起不签名交易
         }
     }
 
