@@ -1,18 +1,8 @@
-## 编译结果截图
-![](./assets/p5.png)
+## 链上像OffChainStorage写入数据
+![](./assets/W4P1.png)
 
-## test运行截图
-![](./assets/p4.png)
+## 使用JS SDK从OffChainStorage读取上述数据
+![](./assets/W4P2.png)
 
-## node启动截图
-![](./assets/p6.png)
-
-## v0->v2
-| v0                        | v2                        |
-|---------------------------|---------------------------|
-| ![](./assets/v0v2_v0.png) | ![](./assets/v0v2_v2.png) |
-
-## v1->v2
-| v1                        | v2                        |
-|---------------------------|---------------------------|
-| ![](./assets/v1v2_v1.png) | ![](./assets/v1v2_v2.png) |
+## 远程拉取天气信息，并以带签名负载的不签名交易提交上链
+![](./assets/W4P3.png)
