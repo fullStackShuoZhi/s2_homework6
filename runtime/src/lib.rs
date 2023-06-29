@@ -333,6 +333,7 @@ impl pallet_template::Config for Runtime {
 impl pallet_poe::Config for Runtime {
     type MaxClaimLength = ConstU32<128>;
     type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = pallet_poe::weights::SubstrateWeight<Runtime>;
 }
 parameter_types! {
 	pub KittyPalletId: PalletId = PalletId(*b"zp/kitty");// 长度为8的u8数组
@@ -422,6 +423,8 @@ mod benches {
 		[pallet_balances, Balances]
 		[pallet_timestamp, Timestamp]
 		[pallet_template, TemplateModule]
+		[pallet_poe, PoeModule]
+
 	);
 }
 
